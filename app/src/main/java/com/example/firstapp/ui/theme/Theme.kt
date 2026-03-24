@@ -1,7 +1,6 @@
 package com.example.firstapp.ui.theme
 
 import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -17,6 +16,9 @@ private val DarkColorScheme = darkColorScheme(
     tertiary = Coral,
     background = SurfaceDark,
     surface = SurfaceDark,
+    onBackground = Color.White,
+    onSurface = Color.White,
+    onSurfaceVariant = CloudBlue,
     onPrimary = Ink,
     onSecondary = Ink,
     onTertiary = Ink
@@ -38,8 +40,8 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun FirstappTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    darkTheme: Boolean = false,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

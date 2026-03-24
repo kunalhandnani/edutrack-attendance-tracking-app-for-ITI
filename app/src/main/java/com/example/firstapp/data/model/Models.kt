@@ -16,6 +16,11 @@ enum class StudentSortOption(val label: String) {
     TRADE("Trade")
 }
 
+enum class NameSortOrder(val label: String) {
+    ASCENDING("A-Z"),
+    DESCENDING("Z-A")
+}
+
 data class Teacher(
     val id: String,
     val name: String,
@@ -27,7 +32,8 @@ data class Teacher(
 data class AttendanceEntry(
     val date: LocalDate,
     val subject: String,
-    val isPresent: Boolean
+    val isPresent: Boolean,
+    val period: String = ""
 )
 
 data class LectureSlot(
@@ -45,6 +51,14 @@ data class ExamItem(
     val room: String
 )
 
+data class Announcement(
+    val id: String,
+    val title: String,
+    val message: String,
+    val teacherName: String,
+    val createdDate: String
+)
+
 data class Student(
     val id: String,
     val name: String,
@@ -56,9 +70,14 @@ data class Student(
     val gender: String,
     val caste: String,
     val casteCategory: String,
+    val religion: String = "",
     val fatherName: String,
     val motherName: String,
     val email: String,
+    val address: String = "",
+    val admissionDate: String = "",
+    val tradeCode: String = "",
+    val isImc: String = "",
     val weeklySchedule: Map<DayOfWeek, List<LectureSlot>>,
     val attendanceEntries: List<AttendanceEntry>
 ) {
@@ -88,6 +107,16 @@ data class AttendanceStatusRow(
     val isPresent: Boolean?
 )
 
+data class SubjectAttendanceSummary(
+    val subject: String,
+    val displayName: String,
+    val total: Int,
+    val present: Int,
+    val absent: Int,
+    val percentage: Int,
+    val entries: List<AttendanceEntry>
+)
+
 data class LoginResult(
     val role: UserRole,
     val student: Student? = null,
@@ -105,6 +134,12 @@ data class StudentImportRecord(
     val gender: String,
     val caste: String,
     val casteCategory: String,
+    val religion: String = "",
     val fatherName: String,
-    val motherName: String
+    val motherName: String,
+    val email: String = "",
+    val address: String = "",
+    val admissionDate: String = "",
+    val tradeCode: String = "",
+    val isImc: String = ""
 )

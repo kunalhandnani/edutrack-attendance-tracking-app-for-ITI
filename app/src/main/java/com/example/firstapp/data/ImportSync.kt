@@ -28,31 +28,7 @@ object ImportSyncNotes {
 }
 
 fun DemoSchoolRepository.mergeImportedStudents(records: List<StudentImportRecord>) {
-    records.forEach { record ->
-        upsertStudent(
-            Student(
-                id = "student-${record.registrationNumber}",
-                name = record.name,
-                trade = record.trade,
-                registrationNumber = record.registrationNumber,
-                traineeNumber = record.traineeNumber,
-                mobileNumber = record.mobileNumber,
-                dob = record.dob,
-                gender = record.gender,
-                caste = record.caste,
-                casteCategory = record.casteCategory,
-                fatherName = record.fatherName,
-                motherName = record.motherName,
-                email = "${record.name.lowercase().replace(" ", "-")}@ITI.com",
-                weeklySchedule = DayOfWeek.entries.associateWith { emptyList<LectureSlot>() },
-                attendanceEntries = listOf(
-                    AttendanceEntry(
-                        date = LocalDate.now(),
-                        subject = "Imported Profile",
-                        isPresent = true
-                    )
-                )
-            )
-        )
+    records.forEachIndexed { index, record ->
+        upsertStudent(studentFromImportRecord(record, index))
     }
 }

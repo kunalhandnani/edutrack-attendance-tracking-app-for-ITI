@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -39,9 +41,11 @@ fun LoginScreen(
     onLogin: (UserRole, String, String) -> String?
 ) {
     var selectedRole by rememberSaveable { mutableStateOf(UserRole.STUDENT) }
-    var email by rememberSaveable { mutableStateOf("aman-kumar@ITI.com") }
-    var password by rememberSaveable { mutableStateOf("15-08-2006") }
+    var email by rememberSaveable { mutableStateOf("aayanshaikh@ITI.com") }
+    var password by rememberSaveable { mutableStateOf("01082008") }
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    val sampleStudent = "aayanshaikh@ITI.com / 01082008"
+    val sampleTeacher = "anita-sharma@ITI.com / teach@123"
 
     Box(contentAlignment = Alignment.Center) {
         Card(
@@ -52,6 +56,7 @@ fun LoginScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 30.dp, vertical = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -80,8 +85,8 @@ fun LoginScreen(
                     onSelected = { role ->
                         selectedRole = role
                         if (role == UserRole.STUDENT) {
-                            email = "aman-kumar@ITI.com"
-                            password = "15-08-2006"
+                            email = "aayanshaikh@ITI.com"
+                            password = "01082008"
                         } else {
                             email = "anita-sharma@ITI.com"
                             password = "teach@123"
@@ -116,7 +121,16 @@ fun LoginScreen(
                     Text("Login")
                 }
                 Text(
-                    "Student: use DOB as password. Teacher: use assigned password.",
+                    if (selectedRole == UserRole.STUDENT) {
+                        "Sample student login: $sampleStudent"
+                    } else {
+                        "Sample teacher login: $sampleTeacher"
+                    },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    "Student username format: name@ITI.com and password format: DDMMYYYY",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )

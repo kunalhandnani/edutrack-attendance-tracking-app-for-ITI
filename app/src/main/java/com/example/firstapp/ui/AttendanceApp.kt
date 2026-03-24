@@ -59,6 +59,7 @@ fun AttendanceApp(repository: DemoSchoolRepository) {
                     StudentDashboardScreen(
                         student = repository.refreshStudent(student.id) ?: student,
                         exams = repository.examsForTrade(student.trade),
+                        announcements = repository.announcements,
                         onLogout = {
                             currentRole = null
                             currentStudent = null

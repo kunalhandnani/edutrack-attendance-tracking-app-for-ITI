@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -18,9 +19,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
@@ -49,8 +50,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.firstapp.data.DemoSchoolRepository
 import com.example.firstapp.data.ImportSyncNotes
+import com.example.firstapp.data.model.Announcement
 import com.example.firstapp.data.model.AttendanceStatusRow
 import com.example.firstapp.data.model.ExamItem
+import com.example.firstapp.data.model.NameSortOrder
 import com.example.firstapp.data.model.Student
 import com.example.firstapp.data.model.StudentSortOption
 import com.example.firstapp.data.model.Teacher
@@ -66,29 +69,40 @@ fun TeacherDashboardScreen(
     onLogout: () -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Mark Attendance", "View Attendance", "Student Details", "Exam Schedule")
+    val tabs = listOf("Mark Attendance", "View Attendance", "Student Details", "Exam Schedule", "Announcements")
+    val trades = remember(repository.students.size) { repository.availableTrades() }
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        DashboardHeader(
-            title = "Teacher Dashboard",
-            subtitle = "${teacher.name} | ${teacher.trades.joinToString()}",
-            onLogout = onLogout
-        )
-        ScrollableTabRow(
-            selectedTabIndex = selectedTab,
-            containerColor = Color.Transparent,
-            edgePadding = 0.dp
-        ) {
-            tabs.forEachIndexed { index, title ->
-                Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title) })
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            DashboardHeader(
+                title = "Teacher Dashboard",
+                subtitle = "${teacher.name} | ${trades.size} trades visible",
+                onLogout = onLogout
+            )
+        }
+        item {
+            ScrollableTabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.Transparent,
+                edgePadding = 0.dp
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title) })
+                }
             }
         }
-        AnimatedContent(targetState = selectedTab, label = "teacher-tabs") { tab ->
-            when (tab) {
-                0 -> MarkAttendanceTab(teacher = teacher, repository = repository)
-                1 -> ViewAttendanceTab(teacher = teacher, repository = repository)
-                2 -> StudentDetailsTab(repository = repository)
-                else -> ExamScheduleTab(teacher = teacher, repository = repository)
+        item {
+            AnimatedContent(targetState = selectedTab, label = "teacher-tabs") { tab ->
+                when (tab) {
+                    0 -> MarkAttendanceTab(teacher = teacher, repository = repository)
+                    1 -> ViewAttendanceTab(teacher = teacher, repository = repository)
+                    2 -> StudentDetailsTab(repository = repository)
+                    3 -> ExamScheduleTab(teacher = teacher, repository = repository)
+                    else -> AnnouncementsTab(teacher = teacher, repository = repository)
+                }
             }
         }
     }
@@ -99,15 +113,22 @@ private fun MarkAttendanceTab(
     teacher: Teacher,
     repository: DemoSchoolRepository
 ) {
-    var selectedTrade by remember { mutableStateOf(teacher.trades.first()) }
+    val allTrades = remember(repository.students.size) { repository.availableTrades() }
+    var selectedTrade by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var selectedIds by remember { mutableStateOf(repository.presentStudentIdsForTradeOnDate(selectedTrade, selectedDate)) }
+    var nameSortOrder by remember { mutableStateOf(NameSortOrder.ASCENDING) }
     var saveMessage by remember { mutableStateOf<String?>(null) }
-    val students = repository.studentsForTrade(selectedTrade, StudentSortOption.NAME)
+    val students = repository.studentsForTrade(selectedTrade, StudentSortOption.NAME).let {
+        when (nameSortOrder) {
+            NameSortOrder.ASCENDING -> it.sortedBy { student -> student.name }
+            NameSortOrder.DESCENDING -> it.sortedByDescending { student -> student.name }
+        }
+    }
 
     LaunchedEffect(selectedTrade, selectedDate, repository.students.size) {
         val savedIds = repository.presentStudentIdsForTradeOnDate(selectedTrade, selectedDate)
-        selectedIds = if (savedIds.isNotEmpty()) savedIds else students.map { it.id }.toSet()
+        selectedIds = if (savedIds.isNotEmpty()) savedIds else repository.studentsForTrade(selectedTrade, StudentSortOption.NAME).map { it.id }.toSet()
     }
 
     DashboardSectionCard(
@@ -119,49 +140,98 @@ private fun MarkAttendanceTab(
             selectedDate = selectedDate,
             onDateSelected = { selectedDate = it }
         )
-        TradeChipSelector(
-            trades = teacher.trades,
-            selectedTrade = selectedTrade,
-            onTradeSelected = { selectedTrade = it }
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(modifier = Modifier.weight(1f)) {
+                TradeSelector(
+                    trades = allTrades,
+                    selectedTrade = if (selectedTrade.isBlank()) "Select Trade" else selectedTrade,
+                    onTradeSelected = { selectedTrade = it }
+                )
+            }
+            Box(modifier = Modifier.weight(1f)) {
+                FilterSelector(
+                    selected = nameSortOrder,
+                    onSelected = { nameSortOrder = it }
+                )
+            }
+        }
         AttendanceSummaryBanner(
             title = "${students.size} students loaded",
             subtitle = "Present selected: ${selectedIds.size} | Date: $selectedDate"
         )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(
+                onClick = { selectedIds = students.map { it.id }.toSet() },
+                modifier = Modifier.weight(1f),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFE7F7EA),
+                    contentColor = Color(0xFF247A31)
+                )
+            ) {
+                Text("All Present")
+            }
+            Button(
+                onClick = { selectedIds = emptySet() },
+                modifier = Modifier.weight(1f),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFFECE8),
+                    contentColor = Color(0xFFB33A2B)
+                )
+            ) {
+                Text("All Absent")
+            }
+        }
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 420.dp)
+                .heightIn(max = 520.dp)
                 .animateContentSize(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             items(students) { student ->
                 GlassRowCard {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                            .padding(horizontal = 18.dp, vertical = 16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(student.name, fontWeight = FontWeight.SemiBold)
-                            Text("${student.registrationNumber} | ${student.traineeNumber}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "${student.registrationNumber} | ${student.traineeNumber.ifBlank { "-" }}",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        Checkbox(
-                            checked = selectedIds.contains(student.id),
-                            onCheckedChange = { checked ->
-                                selectedIds = if (checked) selectedIds + student.id else selectedIds - student.id
+                        StatusToggle(
+                            isPresent = selectedIds.contains(student.id),
+                            onToggle = { makePresent ->
+                                selectedIds = if (makePresent) selectedIds + student.id else selectedIds - student.id
                             }
                         )
                     }
                 }
             }
+            if (students.isEmpty()) {
+                item {
+                    AttendanceSummaryBanner(
+                        title = "No students loaded",
+                        subtitle = "Select a trade to load the student list."
+                    )
+                }
+            }
         }
         Button(
             onClick = {
-                repository.markAttendance(selectedTrade, selectedDate, selectedIds)
-                saveMessage = "Attendance saved for $selectedTrade on $selectedDate."
+                if (selectedTrade.isNotBlank()) {
+                    repository.markAttendance(selectedTrade, selectedDate, selectedIds)
+                    saveMessage = "Attendance saved for $selectedTrade on $selectedDate."
+                } else {
+                    saveMessage = "Please select a trade first."
+                }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -172,11 +242,81 @@ private fun MarkAttendanceTab(
 }
 
 @Composable
+private fun AnnouncementsTab(
+    teacher: Teacher,
+    repository: DemoSchoolRepository
+) {
+    var title by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        DashboardSectionCard(
+            title = "Announcements",
+            subtitle = "Broadcast messages to all students."
+        ) {
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("Announcement Title") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = message,
+                onValueChange = { message = it },
+                label = { Text("Announcement Message") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(
+                onClick = {
+                    if (title.isNotBlank() && message.isNotBlank()) {
+                        repository.addAnnouncement(
+                            Announcement(
+                                id = "announcement-${Random.nextInt(1000, 9999)}",
+                                title = title,
+                                message = message,
+                                teacherName = teacher.name,
+                                createdDate = LocalDate.now().toString()
+                            )
+                        )
+                        title = ""
+                        message = ""
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Make Announcement")
+            }
+        }
+        Card(
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.94f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Broadcasted Messages", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                repository.announcements.forEach { announcement ->
+                    GlassRowCard {
+                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(announcement.title, fontWeight = FontWeight.Bold)
+                            Text(announcement.message)
+                            Text(
+                                "${announcement.teacherName} | ${announcement.createdDate}",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ViewAttendanceTab(
     teacher: Teacher,
     repository: DemoSchoolRepository
 ) {
-    var selectedTrade by remember { mutableStateOf(teacher.trades.first()) }
+    val allTrades = remember(repository.students.size) { repository.availableTrades() }
+    var selectedTrade by remember { mutableStateOf(allTrades.firstOrNull().orEmpty()) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     val attendanceRows = repository.attendanceForTradeOnDate(selectedTrade, selectedDate)
     val presentCount = attendanceRows.count { it.isPresent == true }
@@ -193,7 +333,7 @@ private fun ViewAttendanceTab(
             onDateSelected = { selectedDate = it }
         )
         TradeChipSelector(
-            trades = teacher.trades,
+            trades = allTrades,
             selectedTrade = selectedTrade,
             onTradeSelected = { selectedTrade = it }
         )
@@ -302,7 +442,8 @@ private fun ExamScheduleTab(
     teacher: Teacher,
     repository: DemoSchoolRepository
 ) {
-    var trade by remember { mutableStateOf(teacher.trades.first()) }
+    val allTrades = remember(repository.students.size) { repository.availableTrades() }
+    var trade by remember { mutableStateOf(allTrades.firstOrNull().orEmpty()) }
     var subject by remember { mutableStateOf("") }
     var date by remember { mutableStateOf("2026-04-15") }
     var time by remember { mutableStateOf("10:00") }
@@ -313,7 +454,7 @@ private fun ExamScheduleTab(
             title = "Add Exam Schedule",
             subtitle = "Publish exam dates trade-wise so students can see the latest plan immediately."
         ) {
-            TradeSelector(trades = teacher.trades, selectedTrade = trade, onTradeSelected = { trade = it })
+            TradeSelector(trades = allTrades, selectedTrade = trade, onTradeSelected = { trade = it })
             OutlinedTextField(value = subject, onValueChange = { subject = it }, label = { Text("Subject") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = date, onValueChange = { date = it }, label = { Text("Date (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = time, onValueChange = { time = it }, label = { Text("Time") }, modifier = Modifier.fillMaxWidth())
@@ -457,6 +598,51 @@ private fun GlassRowCard(
     }
 }
 
+@Composable
+private fun StatusToggle(
+    isPresent: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        AttendanceMarkChip(
+            label = "P",
+            selected = isPresent,
+            selectedColor = Color(0xFFE5F5E6),
+            selectedTextColor = Color(0xFF3FAE4C),
+            onClick = { onToggle(true) }
+        )
+        AttendanceMarkChip(
+            label = "A",
+            selected = !isPresent,
+            selectedColor = Color(0xFFFFE8E7),
+            selectedTextColor = Color(0xFFF34A3D),
+            onClick = { onToggle(false) }
+        )
+    }
+}
+
+@Composable
+private fun AttendanceMarkChip(
+    label: String,
+    selected: Boolean,
+    selectedColor: Color,
+    selectedTextColor: Color,
+    onClick: () -> Unit
+) {
+    Text(
+        text = label,
+        modifier = Modifier
+            .background(
+                color = if (selected) selectedColor else Color(0xFFF1F4F8),
+                shape = RoundedCornerShape(10.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        color = if (selected) selectedTextColor else MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.Bold
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DateSelectorField(
@@ -557,7 +743,7 @@ private fun TradeSelector(
             colors = CardDefaults.cardColors(containerColor = Color(0xFFF7FAFC))
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                Text("Trade", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Select Trade", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(selectedTrade, fontWeight = FontWeight.SemiBold)
             }
         }
@@ -567,6 +753,39 @@ private fun TradeSelector(
                     text = { Text(trade) },
                     onClick = {
                         onTradeSelected(trade)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterSelector(
+    selected: NameSortOrder,
+    onSelected: (NameSortOrder) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true },
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF7FAFC))
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text("Filter", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(selected.label, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            NameSortOrder.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    onClick = {
+                        onSelected(option)
                         expanded = false
                     }
                 )

@@ -1,6 +1,7 @@
 package com.example.firstapp.data
 
 import androidx.compose.runtime.mutableStateListOf
+import com.example.firstapp.data.model.Announcement
 import com.example.firstapp.data.model.AttendanceEntry
 import com.example.firstapp.data.model.AttendanceStatusRow
 import com.example.firstapp.data.model.ExamItem
@@ -13,26 +14,36 @@ import com.example.firstapp.data.model.UserRole
 import java.time.DayOfWeek
 import java.time.LocalDate
 
-class DemoSchoolRepository {
+class DemoSchoolRepository(importedRecords: List<com.example.firstapp.data.model.StudentImportRecord> = emptyList()) {
     val students = mutableStateListOf<Student>()
     val teachers = mutableStateListOf<Teacher>()
     val exams = mutableStateListOf<ExamItem>()
+    val announcements = mutableStateListOf<Announcement>()
 
     init {
+        students += if (importedRecords.isNotEmpty()) {
+            importedRecords.mapIndexed { index, record -> studentFromImportRecord(record, index) }
+        } else {
+            seedStudents()
+        }
         teachers += seedTeachers()
-        students += seedStudents()
         exams += seedExams()
+        announcements += seedAnnouncements()
     }
 
     fun login(role: UserRole, email: String, password: String): LoginResult {
         return when (role) {
             UserRole.STUDENT -> {
-                val student = students.firstOrNull { it.email.equals(email.trim(), ignoreCase = true) }
+                val normalizedEmail = email.trim()
+                val student = students.firstOrNull {
+                    it.email.equals(normalizedEmail, ignoreCase = true) ||
+                        generatedStudentEmail(it.name).equals(normalizedEmail, ignoreCase = true)
+                }
                 when {
                     student == null -> LoginResult(role = role, errorMessage = "Student account not found.")
-                    student.dob != password.trim() -> LoginResult(
+                    generatedStudentPassword(student.dob) != password.trim() -> LoginResult(
                         role = role,
-                        errorMessage = "Student password should match DOB exactly, for example 15-08-2006."
+                        errorMessage = "Student password should be DOB in DDMMYYYY format, for example 01082008."
                     )
                     else -> LoginResult(role = role, student = student)
                 }
@@ -80,6 +91,10 @@ class DemoSchoolRepository {
         exams += item
     }
 
+    fun addAnnouncement(item: Announcement) {
+        announcements.add(0, item)
+    }
+
     fun availableTrades(): List<String> = students.map { it.trade }.distinct().sorted()
 
     fun studentsForTrade(trade: String, sortOption: StudentSortOption): List<Student> {
@@ -120,20 +135,25 @@ class DemoSchoolRepository {
     fun examsForTrade(trade: String): List<ExamItem> = exams.filter { it.trade == trade || trade == "All Trades" }
 
     private fun seedTeachers(): List<Teacher> {
+        val allTrades = if (students.isEmpty()) {
+            listOf("Electrician", "Fitter", "Welder")
+        } else {
+            students.map { it.trade }.distinct().sorted()
+        }
         return listOf(
             Teacher(
                 id = "teacher-1",
                 name = "Anita Sharma",
                 email = "anita-sharma@ITI.com",
                 password = "teach@123",
-                trades = listOf("Electrician", "Fitter")
+                trades = allTrades
             ),
             Teacher(
                 id = "teacher-2",
                 name = "Rahul Verma",
                 email = "rahul-verma@ITI.com",
                 password = "welder@123",
-                trades = listOf("Welder")
+                trades = allTrades
             )
         )
     }
@@ -151,6 +171,7 @@ class DemoSchoolRepository {
                 gender = "Male",
                 caste = "OBC",
                 casteCategory = "Non Creamy Layer",
+                religion = "Hindu",
                 fatherName = "Rajesh Kumar",
                 motherName = "Sunita Devi",
                 presentCount = 18,
@@ -167,6 +188,7 @@ class DemoSchoolRepository {
                 gender = "Female",
                 caste = "SC",
                 casteCategory = "Reserved",
+                religion = "Hindu",
                 fatherName = "Mohan Singh",
                 motherName = "Poonam Singh",
                 presentCount = 15,
@@ -183,6 +205,7 @@ class DemoSchoolRepository {
                 gender = "Female",
                 caste = "General",
                 casteCategory = "Open",
+                religion = "Hindu",
                 fatherName = "Rakesh Nair",
                 motherName = "Anjali Nair",
                 presentCount = 17,
@@ -199,6 +222,7 @@ class DemoSchoolRepository {
                 gender = "Male",
                 caste = "ST",
                 casteCategory = "Reserved",
+                religion = "Hindu",
                 fatherName = "Bikash Das",
                 motherName = "Mala Das",
                 presentCount = 14,
@@ -215,6 +239,7 @@ class DemoSchoolRepository {
                 gender = "Male",
                 caste = "General",
                 casteCategory = "Open",
+                religion = "Hindu",
                 fatherName = "Suresh Patel",
                 motherName = "Meena Patel",
                 presentCount = 20,
@@ -231,6 +256,7 @@ class DemoSchoolRepository {
                 gender = "Female",
                 caste = "OBC",
                 casteCategory = "Non Creamy Layer",
+                religion = "Hindu",
                 fatherName = "Mahesh Yadav",
                 motherName = "Kamla Yadav",
                 presentCount = 18,
@@ -247,6 +273,7 @@ class DemoSchoolRepository {
                 gender = "Male",
                 caste = "SC",
                 casteCategory = "Reserved",
+                religion = "Hindu",
                 fatherName = "Pradeep Roy",
                 motherName = "Rekha Roy",
                 presentCount = 16,
@@ -263,6 +290,7 @@ class DemoSchoolRepository {
                 gender = "Male",
                 caste = "Minority",
                 casteCategory = "Reserved",
+                religion = "Islam",
                 fatherName = "Parvez Ali",
                 motherName = "Shabana Ali",
                 presentCount = 13,
@@ -279,6 +307,7 @@ class DemoSchoolRepository {
                 gender = "Male",
                 caste = "OBC",
                 casteCategory = "Non Creamy Layer",
+                religion = "Islam",
                 fatherName = "Salim Khan",
                 motherName = "Nasreen Khan",
                 presentCount = 15,
@@ -295,6 +324,7 @@ class DemoSchoolRepository {
                 gender = "Female",
                 caste = "General",
                 casteCategory = "Open",
+                religion = "Hindu",
                 fatherName = "Nitin Joshi",
                 motherName = "Sonal Joshi",
                 presentCount = 18,
@@ -314,6 +344,7 @@ class DemoSchoolRepository {
         gender: String,
         caste: String,
         casteCategory: String,
+        religion: String,
         fatherName: String,
         motherName: String,
         presentCount: Int,
@@ -330,6 +361,7 @@ class DemoSchoolRepository {
             gender = gender,
             caste = caste,
             casteCategory = casteCategory,
+            religion = religion,
             fatherName = fatherName,
             motherName = motherName,
             email = "${name.lowercase().replace(" ", "-")}@ITI.com",
@@ -338,7 +370,8 @@ class DemoSchoolRepository {
                 AttendanceEntry(
                     date = LocalDate.now().minusDays((totalCount - index).toLong()),
                     subject = listOf("Workshop", "Maths", "Engineering Drawing", "Employability Skills")[index % 4],
-                    isPresent = index < presentCount
+                    isPresent = index < presentCount,
+                    period = "LECT SLOT ${(index % 5) + 1}"
                 )
             }
         )
@@ -379,7 +412,29 @@ class DemoSchoolRepository {
         return listOf(
             ExamItem("exam-1", "Electrician", "Trade Theory", "2026-04-05", "10:00", "Lab 2"),
             ExamItem("exam-2", "Fitter", "Practical Viva", "2026-04-08", "11:30", "Workshop"),
-            ExamItem("exam-3", "Welder", "Safety Assessment", "2026-04-10", "09:30", "Room 5")
+            ExamItem("exam-3", "Welder", "Safety Assessment", "2026-04-10", "09:30", "Room 5"),
+            ExamItem("exam-4", "Architectural Draughtsman (NSQF)", "Trade Drawing", "2026-04-12", "09:00", "Studio 1")
         )
     }
+
+    private fun seedAnnouncements(): List<Announcement> {
+        return listOf(
+            Announcement(
+                id = "announcement-1",
+                title = "Welcome Notice",
+                message = "All students should check their exam schedule and attendance every week.",
+                teacherName = "Anita Sharma",
+                createdDate = "2026-03-25"
+            )
+        )
+    }
+}
+
+fun generatedStudentEmail(name: String): String {
+    val localPart = name.lowercase().filter { it.isLetterOrDigit() }
+    return "$localPart@ITI.com"
+}
+
+fun generatedStudentPassword(dob: String): String {
+    return dob.filter { it.isDigit() }
 }
