@@ -1,10 +1,10 @@
-package com.example.firstapp.data
+package com.iti.edutrack.data
 
 import android.content.Context
-import com.example.firstapp.data.model.AttendanceEntry
-import com.example.firstapp.data.model.LectureSlot
-import com.example.firstapp.data.model.Student
-import com.example.firstapp.data.model.StudentImportRecord
+import com.iti.edutrack.data.model.AttendanceEntry
+import com.iti.edutrack.data.model.LectureSlot
+import com.iti.edutrack.data.model.Student
+import com.iti.edutrack.data.model.StudentImportRecord
 import org.json.JSONArray
 import java.time.DayOfWeek
 import java.time.LocalDate

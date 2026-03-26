@@ -33,8 +33,8 @@ Android Studio app in Kotlin + Jetpack Compose for ITI student and teacher atten
 
 Student login generation is handled in:
 
-- `app/src/main/java/com/example/firstapp/data/DemoSchoolRepository.kt`
-- `app/src/main/java/com/example/firstapp/data/StudentAssetLoader.kt`
+- `app/src/main/java/com/iti/edutrack/data/DemoSchoolRepository.kt`
+- `app/src/main/java/com/iti/edutrack/data/StudentAssetLoader.kt`
 
 ### Teacher
 
@@ -54,19 +54,19 @@ Imported records: 1129 students.
 
 The asset is loaded at startup from:
 
-- `app/src/main/java/com/example/firstapp/MainActivity.kt`
-- `app/src/main/java/com/example/firstapp/data/StudentAssetLoader.kt`
+- `app/src/main/java/com/iti/edutrack/MainActivity.kt`
+- `app/src/main/java/com/iti/edutrack/data/StudentAssetLoader.kt`
 
 ## Important Files
 
-- App entry: `app/src/main/java/com/example/firstapp/MainActivity.kt`
-- Repository: `app/src/main/java/com/example/firstapp/data/DemoSchoolRepository.kt`
-- Asset loader: `app/src/main/java/com/example/firstapp/data/StudentAssetLoader.kt`
-- Models: `app/src/main/java/com/example/firstapp/data/model/Models.kt`
-- Login UI: `app/src/main/java/com/example/firstapp/ui/screens/LoginScreen.kt`
-- Student UI: `app/src/main/java/com/example/firstapp/ui/screens/StudentScreens.kt`
-- Teacher UI: `app/src/main/java/com/example/firstapp/ui/screens/TeacherScreens.kt`
-- Theme: `app/src/main/java/com/example/firstapp/ui/theme/Theme.kt`
+- App entry: `app/src/main/java/com/iti/edutrack/MainActivity.kt`
+- Repository: `app/src/main/java/com/iti/edutrack/data/DemoSchoolRepository.kt`
+- Asset loader: `app/src/main/java/com/iti/edutrack/data/StudentAssetLoader.kt`
+- Models: `app/src/main/java/com/iti/edutrack/data/model/Models.kt`
+- Login UI: `app/src/main/java/com/iti/edutrack/ui/screens/LoginScreen.kt`
+- Student UI: `app/src/main/java/com/iti/edutrack/ui/screens/StudentScreens.kt`
+- Teacher UI: `app/src/main/java/com/iti/edutrack/ui/screens/TeacherScreens.kt`
+- Theme: `app/src/main/java/com/iti/edutrack/ui/theme/Theme.kt`
 - Database diagram: `docs/database-schema.md`
 
 ## Known Limitation

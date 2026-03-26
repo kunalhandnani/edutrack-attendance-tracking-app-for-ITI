@@ -1,11 +1,6 @@
-package com.example.firstapp.data
+package com.iti.edutrack.data
 
-import com.example.firstapp.data.model.AttendanceEntry
-import com.example.firstapp.data.model.LectureSlot
-import com.example.firstapp.data.model.Student
-import com.example.firstapp.data.model.StudentImportRecord
-import java.time.DayOfWeek
-import java.time.LocalDate
+import com.iti.edutrack.data.model.StudentImportRecord
 
 interface StudentExcelImporter {
     suspend fun importStudents(filePath: String): List<StudentImportRecord>

@@ -1,20 +1,21 @@
-package com.example.firstapp.data
+package com.iti.edutrack.data
 
 import androidx.compose.runtime.mutableStateListOf
-import com.example.firstapp.data.model.Announcement
-import com.example.firstapp.data.model.AttendanceEntry
-import com.example.firstapp.data.model.AttendanceStatusRow
-import com.example.firstapp.data.model.ExamItem
-import com.example.firstapp.data.model.LectureSlot
-import com.example.firstapp.data.model.LoginResult
-import com.example.firstapp.data.model.Student
-import com.example.firstapp.data.model.StudentSortOption
-import com.example.firstapp.data.model.Teacher
-import com.example.firstapp.data.model.UserRole
+import com.iti.edutrack.data.model.Announcement
+import com.iti.edutrack.data.model.AttendanceEntry
+import com.iti.edutrack.data.model.AttendanceStatusRow
+import com.iti.edutrack.data.model.ExamItem
+import com.iti.edutrack.data.model.LectureSlot
+import com.iti.edutrack.data.model.LoginResult
+import com.iti.edutrack.data.model.Student
+import com.iti.edutrack.data.model.StudentImportRecord
+import com.iti.edutrack.data.model.StudentSortOption
+import com.iti.edutrack.data.model.Teacher
+import com.iti.edutrack.data.model.UserRole
 import java.time.DayOfWeek
 import java.time.LocalDate
 
-class DemoSchoolRepository(importedRecords: List<com.example.firstapp.data.model.StudentImportRecord> = emptyList()) {
+class DemoSchoolRepository(importedRecords: List<StudentImportRecord> = emptyList()) {
     val students = mutableStateListOf<Student>()
     val teachers = mutableStateListOf<Teacher>()
     val exams = mutableStateListOf<ExamItem>()
@@ -61,6 +62,8 @@ class DemoSchoolRepository(importedRecords: List<com.example.firstapp.data.model
     }
 
     fun refreshStudent(studentId: String): Student? = students.firstOrNull { it.id == studentId }
+
+    fun teacherById(teacherId: String): Teacher? = teachers.firstOrNull { it.id == teacherId }
 
     fun markAttendance(trade: String, date: LocalDate, presentIds: Set<String>) {
         val indexedStudents = students.withIndex().filter { it.value.trade == trade }

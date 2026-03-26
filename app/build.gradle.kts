@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.firstapp"
+    namespace = "com.iti.edutrack"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.example.firstapp"
+        applicationId = "com.iti.edutrack"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -40,6 +40,8 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

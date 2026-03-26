@@ -22,6 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "firstapp"
+rootProject.name = "EduTrack"
 include(":app")
  

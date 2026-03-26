@@ -1,4 +1,4 @@
-package com.example.firstapp.data.model
+package com.iti.edutrack.data.model
 
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -122,6 +122,61 @@ data class LoginResult(
     val student: Student? = null,
     val teacher: Teacher? = null,
     val errorMessage: String? = null
+)
+
+data class AppSessionState(
+    val currentRole: UserRole? = null,
+    val currentStudentId: String? = null,
+    val currentTeacherId: String? = null
+)
+
+data class AuthUiState(
+    val selectedRole: UserRole = UserRole.STUDENT,
+    val email: String = "aayanshaikh@ITI.com",
+    val password: String = "01082008",
+    val errorMessage: String? = null
+)
+
+data class StudentDashboardUiState(
+    val studentId: String? = null,
+    val selectedTab: Int = 0
+)
+
+data class TeacherDashboardUiState(
+    val teacherId: String? = null,
+    val selectedTab: Int = 0
+)
+
+data class MarkAttendanceUiState(
+    val selectedTrade: String = "",
+    val selectedDate: LocalDate = LocalDate.now(),
+    val nameSortOrder: NameSortOrder = NameSortOrder.ASCENDING,
+    val selectedIds: Set<String> = emptySet(),
+    val saveMessage: String? = null
+)
+
+data class ViewAttendanceUiState(
+    val selectedTrade: String = "",
+    val selectedDate: LocalDate = LocalDate.now()
+)
+
+data class StudentDetailsUiState(
+    val selectedTrade: String? = null,
+    val sortOption: StudentSortOption = StudentSortOption.LOW_ATTENDANCE,
+    val selectedStudent: Student? = null
+)
+
+data class ExamScheduleUiState(
+    val trade: String = "",
+    val subject: String = "",
+    val date: String = "2026-04-15",
+    val time: String = "10:00",
+    val room: String = "Room 1"
+)
+
+data class AnnouncementsUiState(
+    val title: String = "",
+    val message: String = ""
 )
 
 data class StudentImportRecord(

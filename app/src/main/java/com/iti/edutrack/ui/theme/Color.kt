@@ -1,4 +1,4 @@
-package com.example.firstapp.ui.theme
+package com.iti.edutrack.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

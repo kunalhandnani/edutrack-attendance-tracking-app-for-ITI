@@ -1,4 +1,4 @@
-package com.example.firstapp.ui.screens
+package com.iti.edutrack.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
@@ -38,7 +38,6 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,29 +47,34 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.firstapp.data.DemoSchoolRepository
-import com.example.firstapp.data.ImportSyncNotes
-import com.example.firstapp.data.model.Announcement
-import com.example.firstapp.data.model.AttendanceStatusRow
-import com.example.firstapp.data.model.ExamItem
-import com.example.firstapp.data.model.NameSortOrder
-import com.example.firstapp.data.model.Student
-import com.example.firstapp.data.model.StudentSortOption
-import com.example.firstapp.data.model.Teacher
+import com.iti.edutrack.data.ImportSyncNotes
+import com.iti.edutrack.data.model.AttendanceStatusRow
+import com.iti.edutrack.data.model.NameSortOrder
+import com.iti.edutrack.data.model.Student
+import com.iti.edutrack.data.model.StudentSortOption
+import com.iti.edutrack.ui.viewmodel.AnnouncementsViewModel
+import com.iti.edutrack.ui.viewmodel.ExamScheduleViewModel
+import com.iti.edutrack.ui.viewmodel.MarkAttendanceViewModel
+import com.iti.edutrack.ui.viewmodel.StudentDetailsViewModel
+import com.iti.edutrack.ui.viewmodel.TeacherDashboardViewModel
+import com.iti.edutrack.ui.viewmodel.ViewAttendanceViewModel
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import kotlin.random.Random
 
 @Composable
 fun TeacherDashboardScreen(
-    teacher: Teacher,
-    repository: DemoSchoolRepository,
+    teacherDashboardViewModel: TeacherDashboardViewModel,
+    markAttendanceViewModel: MarkAttendanceViewModel,
+    viewAttendanceViewModel: ViewAttendanceViewModel,
+    studentDetailsViewModel: StudentDetailsViewModel,
+    examScheduleViewModel: ExamScheduleViewModel,
+    announcementsViewModel: AnnouncementsViewModel,
     onLogout: () -> Unit
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    val uiState = teacherDashboardViewModel.uiState
+    val teacher = teacherDashboardViewModel.teacher ?: return
     val tabs = listOf("Mark Attendance", "View Attendance", "Student Details", "Exam Schedule", "Announcements")
-    val trades = remember(repository.students.size) { repository.availableTrades() }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -79,29 +83,33 @@ fun TeacherDashboardScreen(
         item {
             DashboardHeader(
                 title = "Teacher Dashboard",
-                subtitle = "${teacher.name} | ${trades.size} trades visible",
+                subtitle = "${teacher.name} | ${teacherDashboardViewModel.visibleTrades.size} trades visible",
                 onLogout = onLogout
             )
         }
         item {
             ScrollableTabRow(
-                selectedTabIndex = selectedTab,
+                selectedTabIndex = uiState.selectedTab,
                 containerColor = Color.Transparent,
                 edgePadding = 0.dp
             ) {
                 tabs.forEachIndexed { index, title ->
-                    Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title) })
+                    Tab(
+                        selected = uiState.selectedTab == index,
+                        onClick = { teacherDashboardViewModel.onTabSelected(index) },
+                        text = { Text(title) }
+                    )
                 }
             }
         }
         item {
-            AnimatedContent(targetState = selectedTab, label = "teacher-tabs") { tab ->
+            AnimatedContent(targetState = uiState.selectedTab, label = "teacher-tabs") { tab ->
                 when (tab) {
-                    0 -> MarkAttendanceTab(teacher = teacher, repository = repository)
-                    1 -> ViewAttendanceTab(teacher = teacher, repository = repository)
-                    2 -> StudentDetailsTab(repository = repository)
-                    3 -> ExamScheduleTab(teacher = teacher, repository = repository)
-                    else -> AnnouncementsTab(teacher = teacher, repository = repository)
+                    0 -> MarkAttendanceTab(markAttendanceViewModel)
+                    1 -> ViewAttendanceTab(viewAttendanceViewModel)
+                    2 -> StudentDetailsTab(studentDetailsViewModel)
+                    3 -> ExamScheduleTab(examScheduleViewModel)
+                    else -> AnnouncementsTab(teacher.name, announcementsViewModel)
                 }
             }
         }
@@ -109,27 +117,9 @@ fun TeacherDashboardScreen(
 }
 
 @Composable
-private fun MarkAttendanceTab(
-    teacher: Teacher,
-    repository: DemoSchoolRepository
-) {
-    val allTrades = remember(repository.students.size) { repository.availableTrades() }
-    var selectedTrade by remember { mutableStateOf("") }
-    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-    var selectedIds by remember { mutableStateOf(repository.presentStudentIdsForTradeOnDate(selectedTrade, selectedDate)) }
-    var nameSortOrder by remember { mutableStateOf(NameSortOrder.ASCENDING) }
-    var saveMessage by remember { mutableStateOf<String?>(null) }
-    val students = repository.studentsForTrade(selectedTrade, StudentSortOption.NAME).let {
-        when (nameSortOrder) {
-            NameSortOrder.ASCENDING -> it.sortedBy { student -> student.name }
-            NameSortOrder.DESCENDING -> it.sortedByDescending { student -> student.name }
-        }
-    }
-
-    LaunchedEffect(selectedTrade, selectedDate, repository.students.size) {
-        val savedIds = repository.presentStudentIdsForTradeOnDate(selectedTrade, selectedDate)
-        selectedIds = if (savedIds.isNotEmpty()) savedIds else repository.studentsForTrade(selectedTrade, StudentSortOption.NAME).map { it.id }.toSet()
-    }
+private fun MarkAttendanceTab(viewModel: MarkAttendanceViewModel) {
+    val uiState = viewModel.uiState
+    val students = viewModel.students
 
     DashboardSectionCard(
         title = "Mark Attendance",
@@ -137,31 +127,31 @@ private fun MarkAttendanceTab(
     ) {
         DateSelectorField(
             label = "Attendance Date",
-            selectedDate = selectedDate,
-            onDateSelected = { selectedDate = it }
+            selectedDate = uiState.selectedDate,
+            onDateSelected = viewModel::onDateSelected
         )
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(modifier = Modifier.weight(1f)) {
                 TradeSelector(
-                    trades = allTrades,
-                    selectedTrade = if (selectedTrade.isBlank()) "Select Trade" else selectedTrade,
-                    onTradeSelected = { selectedTrade = it }
+                    trades = viewModel.availableTrades,
+                    selectedTrade = if (uiState.selectedTrade.isBlank()) "Select Trade" else uiState.selectedTrade,
+                    onTradeSelected = viewModel::onTradeSelected
                 )
             }
             Box(modifier = Modifier.weight(1f)) {
                 FilterSelector(
-                    selected = nameSortOrder,
-                    onSelected = { nameSortOrder = it }
+                    selected = uiState.nameSortOrder,
+                    onSelected = viewModel::onFilterSelected
                 )
             }
         }
         AttendanceSummaryBanner(
             title = "${students.size} students loaded",
-            subtitle = "Present selected: ${selectedIds.size} | Date: $selectedDate"
+            subtitle = "Present selected: ${uiState.selectedIds.size} | Date: ${uiState.selectedDate}"
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
-                onClick = { selectedIds = students.map { it.id }.toSet() },
+                onClick = viewModel::markAllPresent,
                 modifier = Modifier.weight(1f),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 10.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -172,7 +162,7 @@ private fun MarkAttendanceTab(
                 Text("All Present")
             }
             Button(
-                onClick = { selectedIds = emptySet() },
+                onClick = viewModel::markAllAbsent,
                 modifier = Modifier.weight(1f),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 10.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -207,10 +197,8 @@ private fun MarkAttendanceTab(
                             )
                         }
                         StatusToggle(
-                            isPresent = selectedIds.contains(student.id),
-                            onToggle = { makePresent ->
-                                selectedIds = if (makePresent) selectedIds + student.id else selectedIds - student.id
-                            }
+                            isPresent = uiState.selectedIds.contains(student.id),
+                            onToggle = { makePresent -> viewModel.toggleStudent(student.id, makePresent) }
                         )
                     }
                 }
@@ -224,104 +212,19 @@ private fun MarkAttendanceTab(
                 }
             }
         }
-        Button(
-            onClick = {
-                if (selectedTrade.isNotBlank()) {
-                    repository.markAttendance(selectedTrade, selectedDate, selectedIds)
-                    saveMessage = "Attendance saved for $selectedTrade on $selectedDate."
-                } else {
-                    saveMessage = "Please select a trade first."
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Button(onClick = viewModel::saveAttendance, modifier = Modifier.fillMaxWidth()) {
             Text("Save Attendance")
         }
-        saveMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+        uiState.saveMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
     }
 }
 
 @Composable
-private fun AnnouncementsTab(
-    teacher: Teacher,
-    repository: DemoSchoolRepository
-) {
-    var title by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
-
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        DashboardSectionCard(
-            title = "Announcements",
-            subtitle = "Broadcast messages to all students."
-        ) {
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Announcement Title") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = message,
-                onValueChange = { message = it },
-                label = { Text("Announcement Message") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Button(
-                onClick = {
-                    if (title.isNotBlank() && message.isNotBlank()) {
-                        repository.addAnnouncement(
-                            Announcement(
-                                id = "announcement-${Random.nextInt(1000, 9999)}",
-                                title = title,
-                                message = message,
-                                teacherName = teacher.name,
-                                createdDate = LocalDate.now().toString()
-                            )
-                        )
-                        title = ""
-                        message = ""
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Make Announcement")
-            }
-        }
-        Card(
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.94f))
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Broadcasted Messages", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                repository.announcements.forEach { announcement ->
-                    GlassRowCard {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(announcement.title, fontWeight = FontWeight.Bold)
-                            Text(announcement.message)
-                            Text(
-                                "${announcement.teacherName} | ${announcement.createdDate}",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-        }
+private fun ViewAttendanceTab(viewModel: ViewAttendanceViewModel) {
+    val uiState = viewModel.uiState
+    LaunchedEffect(Unit) {
+        viewModel.ensureDefaultTrade()
     }
-}
-
-@Composable
-private fun ViewAttendanceTab(
-    teacher: Teacher,
-    repository: DemoSchoolRepository
-) {
-    val allTrades = remember(repository.students.size) { repository.availableTrades() }
-    var selectedTrade by remember { mutableStateOf(allTrades.firstOrNull().orEmpty()) }
-    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-    val attendanceRows = repository.attendanceForTradeOnDate(selectedTrade, selectedDate)
-    val presentCount = attendanceRows.count { it.isPresent == true }
-    val absentCount = attendanceRows.count { it.isPresent == false }
-    val unmarkedCount = attendanceRows.count { it.isPresent == null }
 
     DashboardSectionCard(
         title = "View Attendance",
@@ -329,17 +232,17 @@ private fun ViewAttendanceTab(
     ) {
         DateSelectorField(
             label = "View Date",
-            selectedDate = selectedDate,
-            onDateSelected = { selectedDate = it }
+            selectedDate = uiState.selectedDate,
+            onDateSelected = viewModel::onDateSelected
         )
         TradeChipSelector(
-            trades = allTrades,
-            selectedTrade = selectedTrade,
-            onTradeSelected = { selectedTrade = it }
+            trades = viewModel.availableTrades,
+            selectedTrade = uiState.selectedTrade,
+            onTradeSelected = viewModel::onTradeSelected
         )
         AttendanceSummaryBanner(
-            title = "Present: $presentCount | Absent: $absentCount",
-            subtitle = "Not marked yet: $unmarkedCount"
+            title = "Present: ${viewModel.presentCount} | Absent: ${viewModel.absentCount}",
+            subtitle = "Not marked yet: ${viewModel.unmarkedCount}"
         )
         LazyColumn(
             modifier = Modifier
@@ -347,7 +250,7 @@ private fun ViewAttendanceTab(
                 .heightIn(max = 420.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(attendanceRows) { row ->
+            items(viewModel.attendanceRows) { row ->
                 AttendanceViewRow(row)
             }
         }
@@ -355,12 +258,8 @@ private fun ViewAttendanceTab(
 }
 
 @Composable
-private fun StudentDetailsTab(repository: DemoSchoolRepository) {
-    var selectedTrade by remember { mutableStateOf<String?>(null) }
-    var sortOption by remember { mutableStateOf(StudentSortOption.LOW_ATTENDANCE) }
-    var selectedStudent by remember { mutableStateOf<Student?>(null) }
-    val trades = remember(repository.students.size) { repository.availableTrades() }
-    val students = selectedTrade?.let { repository.studentsForTrade(it, sortOption) }.orEmpty()
+private fun StudentDetailsTab(viewModel: StudentDetailsViewModel) {
+    val uiState = viewModel.uiState
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         DashboardSectionCard(
@@ -368,17 +267,17 @@ private fun StudentDetailsTab(repository: DemoSchoolRepository) {
             subtitle = "Pick a trade first, then choose a student to view the complete profile."
         ) {
             TradeChipSelector(
-                trades = trades,
-                selectedTrade = selectedTrade,
-                onTradeSelected = { selectedTrade = it }
+                trades = viewModel.availableTrades,
+                selectedTrade = uiState.selectedTrade,
+                onTradeSelected = viewModel::onTradeSelected
             )
-            SortSelector(sortOption = sortOption, onSelected = { sortOption = it })
+            SortSelector(sortOption = uiState.sortOption, onSelected = viewModel::onSortSelected)
             Text(
                 text = "MongoDB / Excel sync seam: ${ImportSyncNotes.NOTE}",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        if (selectedTrade == null) {
+        if (uiState.selectedTrade == null) {
             AttendanceSummaryBanner(
                 title = "Select a trade to view students",
                 subtitle = "The student list will appear here after you choose a trade."
@@ -392,8 +291,8 @@ private fun StudentDetailsTab(repository: DemoSchoolRepository) {
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(students) { student ->
-                        GlassRowCard(modifier = Modifier.clickable { selectedStudent = student }) {
+                    items(viewModel.students) { student ->
+                        GlassRowCard(modifier = Modifier.clickable { viewModel.onStudentSelected(student) }) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -413,10 +312,10 @@ private fun StudentDetailsTab(repository: DemoSchoolRepository) {
         }
     }
 
-    selectedStudent?.let { student ->
+    uiState.selectedStudent?.let { student ->
         AlertDialog(
-            onDismissRequest = { selectedStudent = null },
-            confirmButton = { TextButton(onClick = { selectedStudent = null }) { Text("Close") } },
+            onDismissRequest = viewModel::closeDialog,
+            confirmButton = { TextButton(onClick = viewModel::closeDialog) { Text("Close") } },
             title = { Text(student.name) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -438,45 +337,23 @@ private fun StudentDetailsTab(repository: DemoSchoolRepository) {
 }
 
 @Composable
-private fun ExamScheduleTab(
-    teacher: Teacher,
-    repository: DemoSchoolRepository
-) {
-    val allTrades = remember(repository.students.size) { repository.availableTrades() }
-    var trade by remember { mutableStateOf(allTrades.firstOrNull().orEmpty()) }
-    var subject by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("2026-04-15") }
-    var time by remember { mutableStateOf("10:00") }
-    var room by remember { mutableStateOf("Room 1") }
+private fun ExamScheduleTab(viewModel: ExamScheduleViewModel) {
+    val uiState = viewModel.uiState
+    LaunchedEffect(Unit) {
+        viewModel.ensureDefaultTrade()
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         DashboardSectionCard(
             title = "Add Exam Schedule",
             subtitle = "Publish exam dates trade-wise so students can see the latest plan immediately."
         ) {
-            TradeSelector(trades = allTrades, selectedTrade = trade, onTradeSelected = { trade = it })
-            OutlinedTextField(value = subject, onValueChange = { subject = it }, label = { Text("Subject") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = date, onValueChange = { date = it }, label = { Text("Date (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = time, onValueChange = { time = it }, label = { Text("Time") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = room, onValueChange = { room = it }, label = { Text("Room") }, modifier = Modifier.fillMaxWidth())
-            Button(
-                onClick = {
-                    if (subject.isNotBlank()) {
-                        repository.addExam(
-                            ExamItem(
-                                id = "exam-${Random.nextInt(1000, 9999)}",
-                                trade = trade,
-                                subject = subject,
-                                date = date,
-                                time = time,
-                                room = room
-                            )
-                        )
-                        subject = ""
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            TradeSelector(trades = viewModel.availableTrades, selectedTrade = uiState.trade, onTradeSelected = viewModel::onTradeSelected)
+            OutlinedTextField(value = uiState.subject, onValueChange = viewModel::onSubjectChanged, label = { Text("Subject") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = uiState.date, onValueChange = viewModel::onDateChanged, label = { Text("Date (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = uiState.time, onValueChange = viewModel::onTimeChanged, label = { Text("Time") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = uiState.room, onValueChange = viewModel::onRoomChanged, label = { Text("Room") }, modifier = Modifier.fillMaxWidth())
+            Button(onClick = viewModel::saveExam, modifier = Modifier.fillMaxWidth()) {
                 Text("Save Exam Schedule")
             }
         }
@@ -486,7 +363,7 @@ private fun ExamScheduleTab(
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Scheduled Exams", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                repository.examsForTrade("All Trades").forEach { exam ->
+                viewModel.exams.forEach { exam ->
                     GlassRowCard {
                         Row(
                             modifier = Modifier
@@ -499,6 +376,57 @@ private fun ExamScheduleTab(
                                 Text("${exam.date} | ${exam.time}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Text(exam.room)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnnouncementsTab(teacherName: String, viewModel: AnnouncementsViewModel) {
+    val uiState = viewModel.uiState
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        DashboardSectionCard(
+            title = "Announcements",
+            subtitle = "Broadcast messages to all students."
+        ) {
+            OutlinedTextField(
+                value = uiState.title,
+                onValueChange = viewModel::onTitleChanged,
+                label = { Text("Announcement Title") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = uiState.message,
+                onValueChange = viewModel::onMessageChanged,
+                label = { Text("Announcement Message") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(
+                onClick = { viewModel.makeAnnouncement(teacherName) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Make Announcement")
+            }
+        }
+        Card(
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.94f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Broadcasted Messages", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                viewModel.announcements.forEach { announcement ->
+                    GlassRowCard {
+                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(announcement.title, fontWeight = FontWeight.Bold)
+                            Text(announcement.message)
+                            Text(
+                                "${announcement.teacherName} | ${announcement.createdDate}",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -585,10 +513,7 @@ private fun AttendanceViewRow(row: AttendanceStatusRow) {
 }
 
 @Composable
-private fun GlassRowCard(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
+private fun GlassRowCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(22.dp),
@@ -599,10 +524,7 @@ private fun GlassRowCard(
 }
 
 @Composable
-private fun StatusToggle(
-    isPresent: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
+private fun StatusToggle(isPresent: Boolean, onToggle: (Boolean) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         AttendanceMarkChip(
             label = "P",

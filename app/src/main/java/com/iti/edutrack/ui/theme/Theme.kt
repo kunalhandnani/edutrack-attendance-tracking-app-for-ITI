@@ -1,4 +1,4 @@
-package com.example.firstapp.ui.theme
+package com.iti.edutrack.ui.theme
 
 import android.os.Build
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +39,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun FirstappTheme(
+fun EduTrackTheme(
     darkTheme: Boolean = false,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit

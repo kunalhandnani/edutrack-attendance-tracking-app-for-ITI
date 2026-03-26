@@ -1,4 +1,4 @@
-package com.example.firstapp.ui.screens
+package com.iti.edutrack.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -30,10 +29,8 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
@@ -43,30 +40,29 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.firstapp.data.model.Announcement
-import com.example.firstapp.data.model.AttendanceEntry
-import com.example.firstapp.data.model.ExamItem
-import com.example.firstapp.data.model.LectureSlot
-import com.example.firstapp.data.model.Student
-import com.example.firstapp.data.model.SubjectAttendanceSummary
+import com.iti.edutrack.data.model.Announcement
+import com.iti.edutrack.data.model.AttendanceEntry
+import com.iti.edutrack.data.model.ExamItem
+import com.iti.edutrack.data.model.LectureSlot
+import com.iti.edutrack.data.model.Student
+import com.iti.edutrack.data.model.SubjectAttendanceSummary
+import com.iti.edutrack.ui.viewmodel.StudentDashboardViewModel
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 import java.util.Locale
 
 @Composable
 fun StudentDashboardScreen(
-    student: Student,
-    exams: List<ExamItem>,
-    announcements: List<Announcement>,
+    viewModel: StudentDashboardViewModel,
     onLogout: () -> Unit
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    val uiState = viewModel.uiState
+    val student = viewModel.student ?: return
     val tabs = listOf("Overview", "Class Schedule", "Lectures", "Exam Schedule", "Announcements")
 
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             DashboardHeader(
                 title = "Student Dashboard",
@@ -76,23 +72,27 @@ fun StudentDashboardScreen(
         }
         item {
             ScrollableTabRow(
-                selectedTabIndex = selectedTab,
+                selectedTabIndex = uiState.selectedTab,
                 containerColor = Color.Transparent,
                 edgePadding = 0.dp
             ) {
                 tabs.forEachIndexed { index, title ->
-                    Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title) })
+                    Tab(
+                        selected = uiState.selectedTab == index,
+                        onClick = { viewModel.onTabSelected(index) },
+                        text = { Text(title) }
+                    )
                 }
             }
         }
         item {
-            AnimatedContent(targetState = selectedTab, label = "student-tabs") { tab ->
+            AnimatedContent(targetState = uiState.selectedTab, label = "student-tabs") { tab ->
                 when (tab) {
                     0 -> StudentOverview(student)
                     1 -> StudentSchedule(student)
                     2 -> StudentLectures(student)
-                    3 -> StudentExams(exams)
-                    else -> StudentAnnouncements(announcements)
+                    3 -> StudentExams(viewModel.exams)
+                    else -> StudentAnnouncements(viewModel.announcements)
                 }
             }
         }
@@ -222,11 +222,7 @@ private fun LectureSummaryCard(
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(summary.subject, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text(
-                    "See All",
-                    color = Color(0xFF0A8A7C),
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text("See All", color = Color(0xFF0A8A7C), fontWeight = FontWeight.SemiBold)
             }
             Text(
                 "${summary.percentage}%",
@@ -260,7 +256,11 @@ private fun LectureDetailsTable(entries: List<AttendanceEntry>) {
         }
         entries.forEachIndexed { index, entry ->
             Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     BodyCell("${index + 1}", 60.dp)
                     BodyCell(entry.date.toString(), 100.dp)
                     BodyCell(entry.period.ifBlank { "-" }, 120.dp)
@@ -299,22 +299,17 @@ private fun StatsLabel(text: String, color: Color) {
 }
 
 @Composable
-private fun HeaderCell(text: String, cellWidth: androidx.compose.ui.unit.Dp) {
-    Text(
-        text,
-        modifier = Modifier.width(cellWidth),
-        fontWeight = FontWeight.Bold,
-        textAlign = TextAlign.Start
-    )
+private fun HeaderCell(text: String, cellWidth: Dp) {
+    Text(text, modifier = Modifier.width(cellWidth), fontWeight = FontWeight.Bold, textAlign = TextAlign.Start)
 }
 
 @Composable
-private fun BodyCell(text: String, cellWidth: androidx.compose.ui.unit.Dp) {
+private fun BodyCell(text: String, cellWidth: Dp) {
     Text(text, modifier = Modifier.width(cellWidth))
 }
 
 @Composable
-private fun StatusCell(isPresent: Boolean, cellWidth: androidx.compose.ui.unit.Dp) {
+private fun StatusCell(isPresent: Boolean, cellWidth: Dp) {
     val bg = if (isPresent) Color(0xFFE5F5E6) else Color(0xFFFFE8E7)
     val fg = if (isPresent) Color(0xFF3FAE4C) else Color(0xFFF34A3D)
     Box(modifier = Modifier.width(cellWidth), contentAlignment = Alignment.CenterStart) {
@@ -382,11 +377,7 @@ private fun StudentAnnouncements(announcements: List<Announcement>) {
 }
 
 @Composable
-private fun AttendancePieChart(
-    present: Int,
-    absent: Int,
-    modifier: Modifier = Modifier
-) {
+private fun AttendancePieChart(present: Int, absent: Int, modifier: Modifier = Modifier) {
     val total = (present + absent).coerceAtLeast(1)
     val targetAngle = (present.toFloat() / total.toFloat()) * 360f
     val presentAngle by animateFloatAsState(targetValue = targetAngle, label = "pie-angle")
@@ -489,10 +480,7 @@ internal fun DashboardHeader(title: String, subtitle: String, onLogout: () -> Un
                 ),
                 border = BorderStroke(1.dp, Color(0xFFD8DFEA))
             ) {
-                Text(
-                    "Logout",
-                    fontWeight = FontWeight.Medium
-                )
+                Text("Logout", fontWeight = FontWeight.Medium)
             }
         }
     }
